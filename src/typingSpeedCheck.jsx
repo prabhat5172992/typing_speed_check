@@ -15,10 +15,12 @@ class TypingSpeedCheck extends Component {
       leftRP: Content["data"]["text1"], // random paragraph left to type
       tStSP: false, // typing status to start timer once started it will be true
       typingSpeed: 0,
-      typed: "", // The paragraph which is already typed correctly
-      errors: "", // Paragraph typed with error
+      backTyped: [], // Paragraph which is typed
+      correcCharCount: 0, // Correct Char typed
+      errCharCount: 0, // Error char typed
     };
   }
+
   // timer
   timeCounter = () => {
     let t = 0;
@@ -34,9 +36,11 @@ class TypingSpeedCheck extends Component {
       }
     }, 1000);
   };
+
   checkNewLine = (word) => {
     return word.split("\n").filter((item) => item).length;
   };
+
   // Fetch Random Paragraph
   getParagraph = () => {
     const { data, count, keys } = Content;
@@ -44,6 +48,7 @@ class TypingSpeedCheck extends Component {
     const k = keys[idx];
     return data[k];
   };
+
   // Clear count
   clearCount = () => {
     this.setState({
@@ -52,6 +57,7 @@ class TypingSpeedCheck extends Component {
       countWS: 0,
     });
   };
+
   // clear content
   clearContent = () => {
     const gp = this.getParagraph();
@@ -63,67 +69,88 @@ class TypingSpeedCheck extends Component {
       typingOnOFF: false,
       rp: gp,
       leftRP: gp,
-      typed: "",
-      errors: "",
       tStSP: false,
       typingSpeed: 0,
+      backTyped: [],
+      correctCharCount: 0,
+      errCharCount: 0,
     });
   };
 
-  checkForCorrection = (para) => {
-    const { rp, typed, errors, leftRP } = this.state;
-    const gp = rp.split("");
-    const tp = para.toString().split("");
-    let leftContent = rp;
-    if (tp[tp.length - 1] === gp[tp.length - 1] && !errors.length) {
-      if (tp.length >= 1 && typed.length <= tp.length) {
-        this.setState({
-          typed: typed + tp[tp.length - 1],
-          leftRP: leftContent.slice(tp.length - 1 + 1),
-          //   errors: errors + gp[i],
-        });
-      } else {
-        this.setState({
-          typed: typed.slice(0, tp.length),
-          leftRP: typed.slice(-1) + leftRP,
-        });
-      }
+  // Calculate word count per minitue
+  calculateWordCountPM(tp, rp, corr) {
+    const { t1 } = this.state;
+    const avgWordLength = Math.floor(rp.length / rp.split(" ").length);
+    const typedWordLength = tp
+      ? Math.floor(tp.length / tp.split(" ").length)
+      : 0;
+    let wordCount = 0;
+
+    if (typedWordLength > avgWordLength) {
+      wordCount = Math.floor(corr / avgWordLength);
     } else {
-      if (tp.length >= 1 && errors.length + typed.length <= tp.length) {
-        this.setState({
-          errors: errors + gp[tp.length - 1],
-          leftRP: leftContent.slice(tp.length - 1 + 1),
-        });
+      wordCount = Math.floor(corr / typedWordLength);
+    }
+    this.setState({
+      typingSpeed: t1 ? Math.floor((wordCount / t1) * 60) : 1,
+    });
+  }
+
+  // This method checks for paragraph typing correction and errors
+  backCorrection(tp) {
+    const { rp } = this.state;
+    const typed = [];
+    let k = 0;
+    let er = 0;
+
+    for (let i = 0; i < tp.length; i++) {
+      if (tp[i] === rp[i]) {
+        k += 1;
+        typed.push(
+          <span key={`correctSpan${i + 1}`} className="typed">
+            {tp[i]}
+          </span>
+        );
       } else {
-        this.setState({
-          errors:
-            tp.length - typed.length
-              ? errors.slice(0, tp.length - typed.length)
-              : "",
-          leftRP: errors.slice(-1) + leftRP,
-        });
+        er += 1;
+        typed.push(
+          <span key={`errorSpan${i + 1}`} className="typed error">
+            {rp[i]}
+          </span>
+        );
       }
     }
-  };
+
+    this.setState(
+      {
+        backTyped: typed,
+        leftRP: rp.slice(typed.length),
+        backCheck: true,
+        correctCharCount: k,
+        errCharCount: er,
+      },
+      () => {
+        this.calculateWordCountPM(tp, rp, k);
+      }
+    );
+  }
 
   getCharCount = (e) => {
-    const { textContent, tStSP, typed, t1, rp } = this.state;
+    const { textContent, tStSP, rp } = this.state;
     let { countC } = this.state;
     if (!textContent && !tStSP) {
       this.setState({ tStSP: true });
       this.timeCounter();
     }
     const val = e.target.value;
-    const typedCount = typed ? typed.split(" ").length : 0;
 
     if (val.length <= rp.length) {
       this.setState(
         {
           textContent: val,
-          typingSpeed: t1 ? Math.floor((typedCount / t1) * 60) : 1,
         },
         () => {
-          this.checkForCorrection(this.state.textContent);
+          this.backCorrection(val);
         }
       );
 
@@ -172,11 +199,10 @@ class TypingSpeedCheck extends Component {
       countWS,
       t1,
       leftRP,
-      typed,
-      errors,
       textContent,
       typingOnOFF,
       typingSpeed,
+      backTyped,
     } = this.state;
     return (
       <div className="typs-wrapper">
@@ -188,9 +214,11 @@ class TypingSpeedCheck extends Component {
             <p className="content-para">{`Character count without spaces: ${countWS}`}</p>
             <p className="content-para">{`Timer: ${t1}`}</p>
           </div>
+
           <div className="paraWrapper">
-            <span className="typed">{typed}</span>
-            <span className="typed error">{errors}</span>
+            {backTyped.map((item) => {
+              return item;
+            })}
             {leftRP}
           </div>
         </div>
