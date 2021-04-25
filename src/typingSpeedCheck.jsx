@@ -244,4 +244,6 @@ class TypingSpeedCheck extends Component {
     );
   }
 }
+
 export default TypingSpeedCheck;
+
