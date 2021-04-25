@@ -84,7 +84,6 @@ class TypingSpeedCheck extends Component {
     const typedWordLength = tp
       ? Math.floor(tp.length / tp.split(" ").length)
       : 0;
-    console.log("hdsjhjs", avgWordLength,  typedWordLength);
     let wordCount = 0;
 
     if (typedWordLength > avgWordLength) {
